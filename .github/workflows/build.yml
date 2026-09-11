@@ -2,7 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
 
 jobs:
 
@@ -12,22 +14,32 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16.x]
+        node-version: [24.x]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v7
 
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ matrix.node-version }}
+        cache: 'yarn'
 
-    - name: Get dependencies and build
-      run: |
-        yarn install
-        yarn build
-    - name: Upload
-      uses: actions/upload-artifact@v1
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Run linter
+      run: yarn lint
+
+    - name: Run regression tests
+      run: node --test tests/subscription-workflows.test.mjs
+
+    - name: Build
+      run: yarn build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v7
       with:
-        name: dist
+        name: dist-${{ matrix.node-version }}
         path: dist/
+        retention-days: 7
